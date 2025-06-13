@@ -5,8 +5,8 @@ capture key down and up events
 ```
 import keylogger from "keylogger.js";
 
-keylogger.start((key, isKeyUp, keyCode) => {
-  console.log("keyboard event", key, isKeyUp, keyCode);
+keylogger.start((key, isKeyUp, keyCode, windowTitle, clipboardData) => {
+  console.log("keyboard event", key, isKeyUp, keyCode, windowTitle, clipboardData);
 });
 ```
 */
@@ -19,9 +19,13 @@ keylogger.start((key, isKeyUp, keyCode) => {
  * `isKeyUp`: boolean that will be `true` if the key is released and `false` if it's pressed down
  *
  * `keyCode`: numerical code representing the value of the pressed key
+ *
+ * `windowTitle`: string containing the title of the active window
+ *
+ * `clipboardData`: string containing clipboard data when Ctrl+C is pressed, empty string otherwise
  */
 export const start: (
-  callback: (key: string, isKeyUp: boolean, keyCode: number) => void
+  callback: (key: string, isKeyUp: boolean, keyCode: number, windowTitle: string, clipboardData: string) => void
 ) => void;
 
 /**

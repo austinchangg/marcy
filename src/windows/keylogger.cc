@@ -31,15 +31,48 @@ KBDLLHOOKSTRUCT kbdStruct;
 void ReleaseTSFN();
 std::string ConvertKeyCodeToString(int key_stroke);
 std::string GetLastErrorAsString();
+std::string GetActiveWindowTitle();
 
 // The thread-safe function finalizer callback. This callback executes
 // at destruction of thread-safe function, taking as arguments the finalizer
 // data and threadsafe-function context.
 void FinalizerCallback(Napi::Env env, void *finalizeData, TsfnContext *context);
 
+// Get the title of the active window
+std::string GetActiveWindowTitle() {
+    char wnd_title[256];
+    HWND hwnd = GetForegroundWindow();
+    GetWindowTextA(hwnd, wnd_title, sizeof(wnd_title));
+    return std::string(wnd_title);
+}
+
+// Function to get clipboard text
+std::string GetClipboardText() {
+    if (!OpenClipboard(nullptr)) {
+        return "";
+    }
+
+    HANDLE hData = GetClipboardData(CF_TEXT);
+    if (hData == nullptr) {
+        CloseClipboard();
+        return "";
+    }
+
+    char* pszText = static_cast<char*>(GlobalLock(hData));
+    if (pszText == nullptr) {
+        CloseClipboard();
+        return "";
+    }
+
+    std::string text(pszText);
+    GlobalUnlock(hData);
+    CloseClipboard();
+    return text;
+}
+
 // Called from JS with a callback as an argument. It should call the JS callback
 // from inside the native thread when reciving a keyboard input event
-// jsCallback: (key: string, isKeyUp: boolean) => void
+// jsCallback: (key: string, isKeyUp: boolean, keyCode: number, windowTitle: string) => void
 void Start(const Napi::CallbackInfo &info) {
     Napi::Env env = info.Env();
 
@@ -75,14 +108,39 @@ void Start(const Napi::CallbackInfo &info) {
                     // so cast and assign it to kdbStruct.
                     kbdStruct = *((KBDLLHOOKSTRUCT *)lParam);
 
-                    // call the JS callback with the key input value and type
-                    napi_status status =
-                      tsfn.BlockingCall([=](Napi::Env env, Napi::Function jsCallback) {
-                          jsCallback.Call(
-                            {Napi::String::New(env, ConvertKeyCodeToString(kbdStruct.vkCode)),
-                             Napi::Boolean::New(env, wParam == WM_KEYUP || wParam == WM_SYSKEYUP),
-                             Napi::Number::New(env, kbdStruct.vkCode)});
-                      });
+                    // Get the active window title
+                    std::string windowTitle = GetActiveWindowTitle();
+
+                    // Check for Ctrl+C
+                    bool isCtrlPressed = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+                    if (isCtrlPressed && kbdStruct.vkCode == 'C' && wParam == WM_KEYDOWN) {
+                        std::string clipboardText = GetClipboardText();
+                        if (!clipboardText.empty()) {
+                            napi_status status = tsfn.BlockingCall([=](Napi::Env env, Napi::Function jsCallback) {
+                                jsCallback.Call({
+                                    Napi::String::New(env, "c"),
+                                    Napi::Boolean::New(env, false),
+                                    Napi::Number::New(env, kbdStruct.vkCode),
+                                    Napi::String::New(env, windowTitle),
+                                    Napi::String::New(env, clipboardText)
+                                });
+                            });
+                            if (status != napi_ok) {
+                                std::cerr << "Failed to execute BlockingCall!" << std::endl;
+                            }
+                        }
+                    }
+
+                    // Original callback
+                    napi_status status = tsfn.BlockingCall([=](Napi::Env env, Napi::Function jsCallback) {
+                        jsCallback.Call({
+                            Napi::String::New(env, ConvertKeyCodeToString(kbdStruct.vkCode)),
+                            Napi::Boolean::New(env, wParam == WM_KEYUP || wParam == WM_SYSKEYUP),
+                            Napi::Number::New(env, kbdStruct.vkCode),
+                            Napi::String::New(env, windowTitle),
+                            Napi::String::New(env, "")  // Empty string for non-clipboard events
+                        });
+                    });
                     if (status != napi_ok) {
                         std::cerr << "Failed to execute BlockingCall!" << std::endl;
                     }
