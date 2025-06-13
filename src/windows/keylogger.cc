@@ -42,8 +42,25 @@ void FinalizerCallback(Napi::Env env, void *finalizeData, TsfnContext *context);
 std::string GetActiveWindowTitle() {
     char wnd_title[256];
     HWND hwnd = GetForegroundWindow();
+    HWND parent = GetParent(hwnd);
+    
+    // Get the active window title
     GetWindowTextA(hwnd, wnd_title, sizeof(wnd_title));
-    return std::string(wnd_title);
+    std::string activeTitle(wnd_title);
+    
+    // If there's a parent window, get its title
+    if (parent) {
+        char parent_title[256];
+        GetWindowTextA(parent, parent_title, sizeof(parent_title));
+        std::string parentTitle(parent_title);
+        
+        // If parent title is not empty and different from active title
+        if (!parentTitle.empty() && parentTitle != activeTitle) {
+            return parentTitle + " - " + activeTitle;
+        }
+    }
+    
+    return activeTitle;
 }
 
 // Function to get clipboard text

