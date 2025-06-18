@@ -1,3 +1,5 @@
-node_modules
-build
 .DS_Store
+test.js
+index.js
+LICENSE
+README.md
