@@ -227,8 +227,7 @@ class MarcyScreen {
         this.config = configManager.getConfig();
         this.isEnabled = false;
         this.process = null;
-        this.teacherName = 'Teacher' + Math.floor(Math.random() * 1000);
-        this.streamKey = this.teacherName.toLowerCase().replace(/\s+/g, '-');
+        this.streamKey = this.config.agent_id;
 
         this.unsubscribe = this.configManager.subscribe((newConfig) => {
             this.config = newConfig;
