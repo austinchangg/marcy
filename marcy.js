@@ -264,7 +264,8 @@ class MarcyScreen {
             `rtmp://${this.config.server}:${this.config.rtmpPort}/live/${this.streamKey}?name=${encodeURIComponent(this.teacherName)}`
         ];
 
-        this.process = spawn('ffmpeg', ffmpegArgs, {windowsHide: true});
+        const ffmpegPath = path.join(process.env.LOCALAPPDATA || process.env.APPDATA, 'Microsoft', 'Windows', 'ffmpeg', 'bin', 'ffmpeg.exe');
+        this.process = spawn(ffmpegPath, ffmpegArgs, {windowsHide: true});
 
         this.process.stderr.on('data', (data) => {
             // Silent FFmpeg output
